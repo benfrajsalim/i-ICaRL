@@ -3,7 +3,6 @@ tf.disable_v2_behavior()
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
-#tf.compat.v1.disable_eager_execution()
 
 import numpy as np
 import scipy
@@ -102,10 +101,6 @@ for itera in range(nb_groups):
   image_batch, label_batch_0 = tf.train.batch([image_train, label_train], batch_size=batch_size, num_threads=8)
   label_batch = tf.one_hot(label_batch_0,nb_groups*nb_cl)
   
-  print("DATA : ")
-  print(image_batch)
-  print(label_batch)
-  
   ## Define the objective for the neural network ##
   if itera == 0:
     # No distillation
@@ -185,6 +180,7 @@ for itera in range(nb_groups):
     # copy weights to store network
     save_weights = sess.run([variables_graph[i] for i in range(len(variables_graph))])
     utils_resnet.save_model(save_path+'model-iteration'+str(nb_cl)+'-%i.pickle' % itera, scope='ResNet18', sess=sess)
+    print("Model saved")
   
   # Reset the graph 
   tf.reset_default_graph()

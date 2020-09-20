@@ -1,4 +1,6 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
 import numpy as np
@@ -72,10 +74,10 @@ for itera in range(nb_groups):
     
     inits,scores,label_batch,loss_class,file_string_batch,op_feature_map = utils_icarl.reading_data_and_preparing_network(files_from_cl, gpu, itera, batch_size, train_path, labels_dic, mixing, nb_groups, nb_cl, save_path) 
     
-    with tf.compat.v1.Session(config=config) as sess:
+    with tf.Session(config=config) as sess:
         # Launch the prefetch system
         coord   = tf.train.Coordinator()
-        threads = tf.compat.v1.train.start_queue_runners(coord=coord)
+        threads = tf.train.start_queue_runners(coord=coord)
         sess.run(inits)
         
         # Evaluation routine
@@ -105,7 +107,7 @@ for itera in range(nb_groups):
     acc_list[itera,2] = np.average(stat_ncm)
     
     # Reset the graph to compute the numbers ater the next increment
-    tf.compat.v1.reset_default_graph()
+    tf.reset_default_graph()
 
 
 np.save('results_top'+str(top)+'_acc_'+is_cumul+'_cl'+str(nb_cl),acc_list)

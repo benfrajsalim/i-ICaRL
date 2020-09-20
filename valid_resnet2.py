@@ -1,6 +1,9 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
+
 import numpy as np
 import scipy
 import os

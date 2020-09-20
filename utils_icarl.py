@@ -42,7 +42,6 @@ def load_class_in_feature_space(files_from_cl,batch_size,scores, label_batch,los
 
     for i in range(int(np.ceil(len(files_from_cl)/batch_size)+1)):
         sc, l , loss,files_tmp,feat_map_tmp = sess.run([scores, label_batch,loss_class,file_string_batch,op_feature_map])
-        print("trggtydb")
         processed_files.extend(files_tmp)
         label_dico.extend(l)
         mapped_prototypes = feat_map_tmp[:,0,0,:]

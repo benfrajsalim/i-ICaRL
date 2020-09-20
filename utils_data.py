@@ -23,7 +23,7 @@ def parse_devkit_meta(devkit_path):
 
 def read_data(prefix, labels_dic, mixing, files_from_cl):
     image_list = sorted(map(lambda x: os.path.join(prefix, x),
-                        filter(lambda x: x.endswith('JPEG'), files_from_cl)))
+                        filter(lambda x: x.endswith('jpeg'), files_from_cl)))
 
     prefix2     = np.array([file_i.split(prefix + '/')[1].split("_")[0] for file_i in image_list])
     labels_list = np.array([mixing[labels_dic[i]] for i in prefix2])
@@ -42,7 +42,7 @@ def read_data(prefix, labels_dic, mixing, files_from_cl):
 
 def read_data_test(prefix,labels_dic, mixing, files_from_cl):
     image_list = sorted(map(lambda x: os.path.join(prefix, x),
-                        filter(lambda x: x.endswith('JPEG'), files_from_cl)))
+                        filter(lambda x: x.endswith('jpeg'), files_from_cl)))
     
     prefix2 = np.array([file_i.split(prefix + '/')[1].split("_")[0] for file_i in image_list])
     files_list = [file_i.split(prefix + '/')[1] for file_i in image_list]
