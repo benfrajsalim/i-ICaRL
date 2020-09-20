@@ -1,4 +1,6 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 import numpy as np
 try:
     import cPickle
@@ -15,22 +17,22 @@ def relu(x, name, alpha):
 
 def get_variable(name, shape, dtype, initializer, trainable=True, regularizer=None):
     with tf.device('/cpu:0'):
-        var = tf.compat.v1.get_variable(name, shape=shape, dtype=dtype,
+        var = tf.get_variable(name, shape=shape, dtype=dtype,
                               initializer=initializer, regularizer=regularizer, trainable=trainable,
-                              collections=[tf.compat.v1.GraphKeys.WEIGHTS, tf.compat.v1.GraphKeys.GLOBAL_VARIABLES])
+                              collections=[tf.GraphKeys.WEIGHTS, tf.GraphKeys.GLOBAL_VARIABLES])
     return var
 
 
 def conv(inp, name, size, out_channels, strides=[1, 1, 1, 1],
          dilation=None, padding='SAME', apply_relu=True, alpha=0.0,bias=True,
-         initializer=tf.keras.initializers.GlorotNormal()):
+         initializer=tf.keras.initializers.glorot_normal()):
 
     batch_size = inp.get_shape().as_list()[0]
     res1 = inp.get_shape().as_list()[1]
     res2 = inp.get_shape().as_list()[1]
     in_channels = inp.get_shape().as_list()[3]
     
-    with tf.compat.v1.variable_scope(name):
+    with tf.variable_scope(name):
         W = get_variable("W", shape=[size, size, in_channels, out_channels], dtype=tf.float32,
                          initializer=initializer, regularizer=tf.nn.l2_loss)
         b = get_variable("b", shape=[1, 1, 1, out_channels], dtype=tf.float32,
@@ -61,7 +63,7 @@ def batch_norm(inp, name, phase, decay=0.9):
     
     channels = inp.get_shape().as_list()[3]
     
-    with tf.compat.v1.variable_scope(name):
+    with tf.variable_scope(name):
         moving_mean = get_variable("mean", shape=[channels], dtype=tf.float32, initializer=tf.constant_initializer(0.0), trainable=False)
         moving_variance = get_variable("var", shape=[channels], dtype=tf.float32, initializer=tf.constant_initializer(1.0), trainable=False)
         
@@ -88,7 +90,7 @@ def pool(inp, name, kind, size, stride, padding='SAME'):
     strides = [1, stride, stride, 1]
     sizes = [1, size, size, 1]
     
-    with tf.compat.v1.variable_scope(name):
+    with tf.variable_scope(name):
         if kind == 'max':
             out = tf.nn.max_pool(inp, sizes, strides=strides, padding=padding, name=kind)
         else:
@@ -163,16 +165,16 @@ def get_weight_initializer(params):
     
     initializer = []
     
-    scope = tf.compat.v1.get_variable_scope()
+    scope = tf.get_variable_scope()
     scope.reuse_variables()
     for layer, value in params.items():
-        op = tf.compat.v1.get_variable('%s' % layer).assign(value)
+        op = tf.get_variable('%s' % layer).assign(value)
         initializer.append(op)
     return initializer
 
 
 def save_model(name, scope, sess):
-    variables = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.WEIGHTS, scope=scope)
+    variables = tf.get_collection(tf.GraphKeys.WEIGHTS, scope=scope)
     d = [(v.name.split(':')[0], sess.run(v)) for v in variables]
     
     cPickle.dump(d, open(name, 'wb'))

@@ -1,7 +1,10 @@
-import tensorflow as tf
-config = tf.compat.v1.ConfigProto()
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
-tf.compat.v1.disable_eager_execution()
+#tf.compat.v1.disable_eager_execution()
+
 import numpy as np
 import scipy
 import os
@@ -19,17 +22,17 @@ import utils_icarl
 import utils_data
 
 ######### Modifiable Settings ##########
-batch_size = 4            # Batch size
+batch_size = 4             # Batch size
 nb_val     = 1             # Validation samples per class
 nb_cl      = 2             # Classes per group
 nb_groups  = 1             # Number of groups
 nb_proto   = 2             # Number of prototypes per class: total protoset memory/ total number of classes
 epochs     = 3             # Total number of epochs
-lr_old     = 2.             # Initial learning rate
-lr_strat   = []  # Epochs where learning rate gets decreased
-lr_factor  = 5.             # Learning rate decrease factor
-gpu        = '0'            # Used GPU
-wght_decay = 0.00001        # Weight Decay
+lr_old     = 2.            # Initial learning rate
+lr_strat   = []            # Epochs where learning rate gets decreased
+lr_factor  = 5.            # Learning rate decrease factor
+gpu        = '0'           # Used GPU
+wght_decay = 0.00001       # Weight Decay
 ########################################
 
 ######### Paths  ##########
@@ -60,7 +63,7 @@ np.random.shuffle(mixing)
 
 # Loading the labels
 
-'labels_dic, label_names, validation_ground_truth = utils_data.parse_devkit_meta(devkit_path)'
+#'labels_dic, label_names, validation_ground_truth = utils_data.parse_devkit_meta(devkit_path)'
 # Or you can just do like this
 define_class = ["cat", "kroos"]
 labels_dic = {k: v for v, k in enumerate(define_class)}
@@ -96,8 +99,12 @@ for itera in range(nb_groups):
       files_from_cl += tmp_var[0:min(len(tmp_var),nb_protos_cl)]
   ## Import the data reader ##
   image_train, label_train   = utils_data.read_data(train_path, labels_dic, mixing, files_from_cl=files_from_cl)  
-  image_batch, label_batch_0 = tf.compat.v1.train.batch([image_train, label_train], batch_size=batch_size, num_threads=8)
+  image_batch, label_batch_0 = tf.train.batch([image_train, label_train], batch_size=batch_size, num_threads=8)
   label_batch = tf.one_hot(label_batch_0,nb_groups*nb_cl)
+  
+  print("DATA : ")
+  print(image_batch)
+  print(label_batch)
   
   ## Define the objective for the neural network ##
   if itera == 0:
@@ -105,13 +112,13 @@ for itera in range(nb_groups):
     variables_graph,variables_graph2,scores,scores_stored = utils_icarl.prepare_networks(gpu,image_batch, nb_cl, nb_groups)
     
     # Define the objective for the neural network: 1 vs all cross_entropy
-    with tf.device('/gpu:0'):
+    with tf.device('/cpu:0'):
         scores        = tf.concat(scores,0)
-        l2_reg        = wght_decay * tf.reduce_sum(tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES, scope='ResNet18'))
+        l2_reg        = wght_decay * tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='ResNet18'))
         loss_class    = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=label_batch, logits=scores)) 
         loss          = loss_class + l2_reg
-        learning_rate = tf.compat.v1.placeholder(tf.float32, shape=[])
-        opt           = tf.compat.v1.train.MomentumOptimizer(learning_rate, 0.9)
+        learning_rate = tf.placeholder(tf.float32, shape=[])
+        opt           = tf.train.MomentumOptimizer(learning_rate, 0.9)
         train_step    = opt.minimize(loss,var_list=variables_graph)
   
   if itera > 0:
@@ -122,7 +129,7 @@ for itera in range(nb_groups):
     op_assign = [(variables_graph2[i]).assign(variables_graph[i]) for i in range(len(variables_graph))]
     
     # Define the objective for the neural network : 1 vs all cross_entropy + distillation
-    with tf.device('/gpu:0'):
+    with tf.device('/cpu:0'):
       scores            = tf.concat(scores,0)
       scores_stored     = tf.concat(scores_stored,0)
       old_cl            = (order[range(itera*nb_cl)]).astype(np.int32)
@@ -131,19 +138,19 @@ for itera in range(nb_groups):
       label_new_classes = tf.stack([label_batch[:,i] for i in new_cl],axis=1)
       pred_old_classes  = tf.stack([scores[:,i] for i in old_cl],axis=1)
       pred_new_classes  = tf.stack([scores[:,i] for i in new_cl],axis=1)
-      l2_reg            = wght_decay * tf.reduce_sum(tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES, scope='ResNet18'))
+      l2_reg            = wght_decay * tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='ResNet18'))
       loss_class        = tf.reduce_mean(tf.concat([tf.nn.sigmoid_cross_entropy_with_logits(labels=label_old_classes, logits=pred_old_classes),tf.nn.sigmoid_cross_entropy_with_logits(labels=label_new_classes, logits=pred_new_classes)],1)) 
       loss              = loss_class + l2_reg
-      learning_rate     = tf.compat.v1.placeholder(tf.float32, shape=[])
-      opt               = tf.compat.v1.train.MomentumOptimizer(learning_rate, 0.9)
+      learning_rate     = tf.placeholder(tf.float32, shape=[])
+      opt               = tf.train.MomentumOptimizer(learning_rate, 0.9)
       train_step        = opt.minimize(loss,var_list=variables_graph)
 
   ## Run the learning phase ##
-  with tf.compat.v1.Session(config=config) as sess:
+  with tf.Session(config=config) as sess:
     # Launch the data reader 
-    coord   = tf.compat.v1.train.Coordinator()
-    threads = tf.compat.v1.train.start_queue_runners(coord=coord)
-    sess.run(tf.compat.v1.global_variables_initializer())
+    coord   = tf.train.Coordinator()
+    threads = tf.train.start_queue_runners(coord=coord)
+    sess.run(tf.global_variables_initializer())
     lr      = lr_old
     
     # Run the loading of the weights for the learning network and the copy network
@@ -180,20 +187,20 @@ for itera in range(nb_groups):
     utils_resnet.save_model(save_path+'model-iteration'+str(nb_cl)+'-%i.pickle' % itera, scope='ResNet18', sess=sess)
   
   # Reset the graph 
-  tf.compat.v1.reset_default_graph()
+  tf.reset_default_graph()
   ## Exemplars management part  ##
   nb_protos_cl  = int(np.ceil(nb_proto*nb_groups*1./(itera+1))) # Reducing number of exemplars for the previous classes
   files_from_cl = files_train[itera]
   inits,scores,label_batch,loss_class,file_string_batch,op_feature_map = utils_icarl.reading_data_and_preparing_network(files_from_cl, gpu, itera, batch_size, train_path, labels_dic, mixing, nb_groups, nb_cl, save_path)
-  with tf.compat.v1.Session(config=config) as sess:
+  with tf.Session(config=config) as sess:
     coord   = tf.train.Coordinator()
-    threads = tf.compat.v1.train.start_queue_runners(coord=coord)
+    threads = tf.train.start_queue_runners(coord=coord)
     void3   = sess.run(inits)
-    print("Seyma")
+
     # Load the training samples of the current batch of classes in the feature space to apply the herding algorithm
 
     Dtot,processed_files,label_dico = utils_icarl.load_class_in_feature_space(files_from_cl, batch_size, scores, label_batch, loss_class, file_string_batch, op_feature_map,sess)
-    print("Seyma2")
+
     processed_files = np.array([x.decode() for x in processed_files])
     
     # Herding procedure : ranking of the potential exemplars
@@ -216,7 +223,7 @@ for itera in range(nb_groups):
     coord.request_stop()
     coord.join(threads)
   # Reset the graph
-  tf.compat.v1.reset_default_graph()
+  tf.reset_default_graph()
   
   # Class means for iCaRL and NCM 
   print('Computing theoretical class means for NCM and mean-of-exemplars for iCaRL ...')
@@ -224,9 +231,9 @@ for itera in range(nb_groups):
       files_from_cl = files_train[iteration2]
       inits,scores,label_batch,loss_class,file_string_batch,op_feature_map = utils_icarl.reading_data_and_preparing_network(files_from_cl, gpu, itera, batch_size, train_path, labels_dic, mixing, nb_groups, nb_cl, save_path)
       
-      with tf.compat.v1.Session(config=config) as sess:
+      with tf.Session(config=config) as sess:
           coord   = tf.train.Coordinator()
-          threads = tf.compat.v1.train.start_queue_runners(coord=coord)
+          threads = tf.train.start_queue_runners(coord=coord)
           void2   = sess.run(inits)
           
           Dtot,processed_files,label_dico = utils_icarl.load_class_in_feature_space(files_from_cl, batch_size, scores, label_batch, loss_class, file_string_batch, op_feature_map, sess)
@@ -253,7 +260,7 @@ for itera in range(nb_groups):
           coord.join(threads)
 
       # Reset the graph
-      tf.compat.v1.reset_default_graph()
+      tf.reset_default_graph()
   
   # Pickle class means and protoset
   with open(str(nb_cl)+'class_means.pickle','wb') as fp:

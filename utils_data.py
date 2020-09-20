@@ -1,4 +1,6 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 import numpy as np
 import os
 import scipy.io
@@ -29,11 +31,11 @@ def read_data(prefix, labels_dic, mixing, files_from_cl):
     assert(len(image_list) == len(labels_list))
     images             = tf.convert_to_tensor(image_list, dtype=tf.string)
     labels             = tf.convert_to_tensor(labels_list, dtype=tf.int32)
-    input_queue        = tf.compat.v1.train.slice_input_producer([images, labels], shuffle=True, capacity=2000)
-    image_file_content = tf.compat.v1.read_file(input_queue[0])
+    input_queue        = tf.train.slice_input_producer([images, labels], shuffle=True, capacity=2000)
+    image_file_content = tf.read_file(input_queue[0])
     label              = input_queue[1]
-    image              = tf.compat.v1.image.resize_images(tf.image.decode_jpeg(image_file_content, channels=3), [256, 256])
-    image              = tf.compat.v1.random_crop(image, [224, 224, 3])
+    image              = tf.image.resize_images(tf.image.decode_jpeg(image_file_content, channels=3), [256, 256])
+    image              = tf.random_crop(image, [224, 224, 3])
     image              = tf.image.random_flip_left_right(image)
     
     return image, label
@@ -50,11 +52,11 @@ def read_data_test(prefix,labels_dic, mixing, files_from_cl):
     images              = tf.convert_to_tensor(image_list, dtype=tf.string)
     files               = tf.convert_to_tensor(files_list, dtype=tf.string)
     labels              = tf.convert_to_tensor(labels_list, dtype=tf.int32)
-    input_queue         = tf.compat.v1.train.slice_input_producer([images, labels,files], shuffle=False, capacity=2000)
-    image_file_content  = tf.compat.v1.read_file(input_queue[0])
+    input_queue         = tf.train.slice_input_producer([images, labels,files], shuffle=False, capacity=2000)
+    image_file_content  = tf.read_file(input_queue[0])
     label               = input_queue[1]
     file_string         = input_queue[2]
-    image               = tf.compat.v1.image.resize_images(tf.image.decode_jpeg(image_file_content, channels=3), [224, 224])
+    image               = tf.image.resize_images(tf.image.decode_jpeg(image_file_content, channels=3), [224, 224])
     
     return image, label,file_string
 

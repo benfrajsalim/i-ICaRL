@@ -1,4 +1,6 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 import numpy as np
 import os
 import scipy.io
@@ -12,15 +14,15 @@ except:
 
 def reading_data_and_preparing_network(files_from_cl, gpu, itera, batch_size, train_path, labels_dic, mixing, nb_groups, nb_cl, save_path):
     image_train, label_train,file_string       = utils_data.read_data_test(train_path,labels_dic, mixing,files_from_cl=files_from_cl)
-    image_batch, label_batch,file_string_batch = tf.compat.v1.train.batch([image_train, label_train,file_string], batch_size=batch_size, num_threads=8)
+    image_batch, label_batch,file_string_batch = tf.train.batch([image_train, label_train,file_string], batch_size=batch_size, num_threads=8)
     label_batch_one_hot = tf.one_hot(label_batch,nb_groups*nb_cl)
     
     ### Network and loss function  
     mean_img = tf.constant([123.68, 116.779, 103.939], dtype=tf.float32, shape=[1, 1, 1, 3], name='img_mean')
-    with tf.compat.v1.variable_scope('ResNet18'):
-        with tf.device('/gpu:'+gpu):
+    with tf.variable_scope('ResNet18'):
+        with tf.device('/cpu:'+gpu):
             scores         = utils_resnet.ResNet18(image_batch-mean_img, phase='test',num_outputs=nb_cl*nb_groups)
-            graph          = tf.compat.v1.get_default_graph()
+            graph          = tf.get_default_graph()
             op_feature_map = graph.get_operation_by_name('ResNet18/pool_last/avg').outputs[0]
     
     loss_class = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=label_batch_one_hot, logits=scores))
@@ -54,26 +56,26 @@ def load_class_in_feature_space(files_from_cl,batch_size,scores, label_batch,los
 def prepare_networks(gpu,image_batch, nb_cl, nb_groups):
   mean_img = tf.constant([123.68, 116.779, 103.939], dtype=tf.float32, shape=[1, 1, 1, 3], name='img_mean')
   scores   = []
-  with tf.compat.v1.variable_scope('ResNet18'):
-    with tf.device('/gpu:' + gpu):
+  with tf.variable_scope('ResNet18'):
+    with tf.device('/cpu:' + gpu):
         score = utils_resnet.ResNet18(image_batch-mean_img, phase='train',num_outputs=nb_cl*nb_groups)
         scores.append(score)
     
-    scope = tf.compat.v1.get_variable_scope()
+    scope = tf.get_variable_scope()
     scope.reuse_variables()
   
   # First score and initialization
-  variables_graph = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.WEIGHTS, scope='ResNet18')
+  variables_graph = tf.get_collection(tf.GraphKeys.WEIGHTS, scope='ResNet18')
   scores_stored   = []
-  with tf.compat.v1.variable_scope('store_ResNet18'):
-    with tf.device('/gpu:' + gpu):
+  with tf.variable_scope('store_ResNet18'):
+    with tf.device('/cpu:' + gpu):
         score = utils_resnet.ResNet18(image_batch-mean_img, phase='test',num_outputs=nb_cl*nb_groups)
         scores_stored.append(score)
     
-    scope = tf.compat.v1.get_variable_scope()
+    scope = tf.get_variable_scope()
     scope.reuse_variables()
   
-  variables_graph2 = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.WEIGHTS, scope='store_ResNet18')
+  variables_graph2 = tf.get_collection(tf.GraphKeys.WEIGHTS, scope='store_ResNet18')
   
   return variables_graph,variables_graph2,scores,scores_stored
 
